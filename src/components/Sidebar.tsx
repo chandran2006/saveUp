@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { translate } from '../utils/translations';
+import { t } from '../utils/translations';
 
 export function Sidebar() {
   const location = useLocation();
@@ -55,7 +55,7 @@ export function Sidebar() {
               }`}
             >
               <Icon size={20} />
-              <span>{translate(item.label, language)}</span>
+              <span>{t(item.label, language)}</span>
             </Link>
           );
         })}
@@ -67,7 +67,7 @@ export function Sidebar() {
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
         >
           <LogOut size={20} />
-          <span>{translate('logout', language)}</span>
+          <span>{t('logout', language)}</span>
         </button>
       </div>
     </div>

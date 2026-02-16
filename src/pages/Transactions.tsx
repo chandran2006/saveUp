@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { Modal } from '../components/Modal';
 import { LoadingSpinner } from '../components/Loading';
 import { ReceiptScanner } from '../components/ReceiptScanner';
-import { Plus, Pencil, Trash2, ArrowLeftRight, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeftRight, Filter, Download } from 'lucide-react';
 import { t } from '../utils/translations';
 
 interface Transaction {
@@ -120,6 +120,25 @@ export function Transactions() {
     resetForm();
   }
 
+  function exportToCSV() {
+    const headers = ['Date', 'Type', 'Category', 'Description', 'Amount'];
+    const rows = filteredTransactions.map(t => [
+      t.date,
+      t.type,
+      t.category,
+      t.description || '',
+      t.amount
+    ]);
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const filteredTransactions = transactions.filter((trans) => {
     if (filterCategory && trans.category !== filterCategory) return false;
     if (filterMonth && !trans.date.startsWith(filterMonth)) return false;
@@ -144,6 +163,12 @@ export function Transactions() {
             <Plus size={20} />
             {t('addTransaction', language)}
           </button>
+          {filteredTransactions.length > 0 && (
+            <button onClick={exportToCSV} className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
+              <Download size={20} />
+              Export CSV
+            </button>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
