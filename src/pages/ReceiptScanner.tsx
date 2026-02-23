@@ -18,6 +18,7 @@ export function ReceiptScanner() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) loadReceipts();
@@ -37,14 +38,24 @@ export function ReceiptScanner() {
 
   async function handleFileUpload(file: File) {
     setUploading(true);
+    
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => setUploadPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+
     try {
       const fileName = `${user?.id}/${Date.now()}_${file.name}`;
       const { data: uploadData } = await supabase.storage.from('receipts').upload(fileName, file);
       const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
 
-      const formData = new FormData();
-      formData.append('image', file);
-      const { data: extractedData } = await axios.post('http://localhost:8080/api/receipt/scan', formData);
+      // Simple extraction without backend
+      const extractedData = {
+        amount: 0,
+        category: 'otherExpense',
+        description: 'Receipt scan - ' + file.name.replace(/\.[^/.]+$/, ''),
+        date: new Date().toISOString().split('T')[0]
+      };
 
       await supabase.from('receipts').insert({
         user_id: user?.id,
@@ -52,24 +63,14 @@ export function ReceiptScanner() {
         extracted_data: extractedData
       });
 
-      if (extractedData.amount) {
-        await supabase.from('transactions').insert({
-          user_id: user?.id,
-          type: 'expense',
-          amount: extractedData.amount,
-          category: extractedData.category || 'other',
-          description: extractedData.description || 'Receipt scan',
-          date: extractedData.date || new Date().toISOString().split('T')[0]
-        });
-      }
-
       loadReceipts();
-      alert('Receipt scanned and transaction added!');
+      alert('Receipt uploaded! Please add transaction details manually.');
     } catch (error) {
-      console.error('Receipt scan error:', error);
-      alert('Failed to scan receipt. Make sure backend is running.');
+      console.error('Receipt upload error:', error);
+      alert('Failed to upload receipt.');
     } finally {
       setUploading(false);
+      setTimeout(() => setUploadPreview(null), 1000);
     }
   }
 
@@ -84,24 +85,35 @@ export function ReceiptScanner() {
       <div className="space-y-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-8">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-4">
-              <Camera className="text-emerald-600" size={32} />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Scan Your Receipts</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">Upload receipt images to automatically extract transaction details</p>
+            {uploadPreview ? (
+              <div className="mb-6">
+                <div className="relative inline-block">
+                  <img src={uploadPreview} alt="Uploading" className="w-64 h-64 object-contain rounded-lg border-2 border-emerald-500" />
+                  {uploading && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
+                      <div className="text-center text-white">
+                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-2"></div>
+                        <p className="font-semibold">Uploading...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-4">
+                  <Camera className="text-emerald-600" size={32} />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Scan Your Receipts</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">Upload receipt images to keep track of your expenses</p>
+              </>
+            )}
             
             <label className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer transition-colors">
               <Upload size={20} />
-              {uploading ? 'Scanning...' : 'Upload Receipt'}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} disabled={uploading} />
+              {uploading ? 'Uploading...' : 'Upload Receipt'}
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} disabled={uploading} />
             </label>
-
-            {uploading && (
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <LoadingSpinner size="sm" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">Processing receipt...</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -153,9 +165,9 @@ export function ReceiptScanner() {
           <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How it works</h4>
           <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
             <li>Upload a clear photo of your receipt</li>
-            <li>AI extracts amount, category, and date</li>
-            <li>Transaction is automatically created</li>
-            <li>Receipt is saved for your records</li>
+            <li>Receipt is saved to your account</li>
+            <li>View all receipts in one place</li>
+            <li>Add transaction details manually from receipts</li>
           </ol>
         </div>
       </div>
