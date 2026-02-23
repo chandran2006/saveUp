@@ -18,7 +18,8 @@ interface Transaction {
   date: string;
 }
 
-const CATEGORIES = ['food', 'transport', 'shopping', 'entertainment', 'bills', 'healthcare', 'education', 'salary', 'freelance', 'investment', 'other'];
+const INCOME_CATEGORIES = ['salary', 'businessIncome', 'freelanceIncome', 'rentalIncome', 'interestIncome', 'investmentIncome', 'bonus', 'commission', 'pension', 'giftReceived', 'refund', 'otherIncome'];
+const EXPENSE_CATEGORIES = ['rent', 'bill', 'groceries', 'food', 'transport', 'education', 'medical', 'shopping', 'entertainment', 'loanEmi', 'insurance', 'tax', 'donation', 'maintenance', 'snacks', 'stationery', 'otherExpense'];
 
 export function Transactions() {
   const { user } = useAuth();
@@ -55,10 +56,11 @@ export function Transactions() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const amountValue = Math.round(parseFloat(formData.amount));
       if (editingTransaction) {
         await supabase.from('transactions').update({
           type: formData.type,
-          amount: Number(formData.amount),
+          amount: amountValue,
           category: formData.category,
           description: formData.description,
           date: formData.date,
@@ -67,7 +69,7 @@ export function Transactions() {
         await supabase.from('transactions').insert([{
           user_id: user?.id,
           type: formData.type,
-          amount: Number(formData.amount),
+          amount: amountValue,
           category: formData.category,
           description: formData.description,
           date: formData.date,
@@ -179,7 +181,7 @@ export function Transactions() {
             </label>
             <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
               <option value="">{t('allCategories', language)}</option>
-              {CATEGORIES.map((cat) => (
+              {[...INCOME_CATEGORIES, ...EXPENSE_CATEGORIES].map((cat) => (
                 <option key={cat} value={cat}>{t(cat, language)}</option>
               ))}
             </select>
@@ -262,13 +264,13 @@ export function Transactions() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('amount', language)}</label>
-              <input type="number" required min="0" step="0.01" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="0.00" />
+              <input type="number" required min="0" step="1" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="0" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('category', language)}</label>
               <select required value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500">
                 <option value="">Select category</option>
-                {CATEGORIES.map((cat) => (
+                {(formData.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map((cat) => (
                   <option key={cat} value={cat}>{t(cat, language)}</option>
                 ))}
               </select>
