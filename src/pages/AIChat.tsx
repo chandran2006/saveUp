@@ -3,8 +3,9 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { Send, Bot, User as UserIcon, Sparkles, Copy, RefreshCw, Languages, Zap, TrendingUp, PieChart, Target, Lightbulb, DollarSign } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
 import { getAIResponse } from '../utils/aiKnowledge';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
 interface Message {
@@ -14,26 +15,20 @@ interface Message {
   timestamp: Date;
 }
 
-const LANGUAGES = [
-  { code: 'en', name: 'English', flag: '🇬🇧' },
-  { code: 'hi', name: 'हिंदी', flag: '🇮🇳' },
-  { code: 'ta', name: 'தமிழ்', flag: '🇮🇳' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-];
-
-const QUICK_PROMPTS = [
-  { icon: TrendingUp, color: 'emerald', text: 'Analyze Spending', prompt: 'Analyze my spending patterns and give detailed insights with recommendations' },
-  { icon: PieChart, color: 'blue', text: 'Budget Plan', prompt: 'Create a personalized budget plan based on my income and expenses' },
-  { icon: Target, color: 'purple', text: 'Savings Goals', prompt: 'Help me set realistic savings goals and create an action plan' },
-  { icon: Lightbulb, color: 'yellow', text: 'Money Tips', prompt: 'Give me 5 practical tips to save money and reduce expenses' },
-  { icon: DollarSign, color: 'green', text: 'Investment Guide', prompt: 'Suggest beginner-friendly investment strategies for my profile' },
-  { icon: Zap, color: 'red', text: 'Quick Review', prompt: 'Quick financial health check - what should I focus on?' },
+// Quick prompt definitions using i18n translation keys
+const QUICK_PROMPT_KEYS = [
+  { icon: TrendingUp, color: 'emerald', textKey: 'aiChat.analyzeSpending', promptKey: 'aiChat.analyzeSpendingPrompt' },
+  { icon: PieChart, color: 'blue', textKey: 'aiChat.budgetPlan', promptKey: 'aiChat.budgetPlanPrompt' },
+  { icon: Target, color: 'purple', textKey: 'aiChat.savingsGoals', promptKey: 'aiChat.savingsGoalsPrompt' },
+  { icon: Lightbulb, color: 'yellow', textKey: 'aiChat.moneyTips', promptKey: 'aiChat.moneyTipsPrompt' },
+  { icon: DollarSign, color: 'green', textKey: 'aiChat.investmentGuide', promptKey: 'aiChat.investmentGuidePrompt' },
+  { icon: Zap, color: 'red', textKey: 'aiChat.quickReview', promptKey: 'aiChat.quickReviewPrompt' },
 ];
 
 export function AIChat() {
   const { user } = useAuth();
   const { language, setLanguage } = useLanguage();
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,11 +37,13 @@ export function AIChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user) {
-      loadContext();
-      initChat();
-    }
+    if (user) loadContext();
   }, [user]);
+
+  // Re-init chat welcome message whenever language changes
+  useEffect(() => {
+    initChat();
+  }, [language]);
 
   useEffect(() => {
     scrollToBottom();
@@ -64,7 +61,7 @@ export function AIChat() {
     const welcomeMsg: Message = {
       id: '1',
       role: 'assistant',
-      content: `👋 Hello! I'm your AI Financial Advisor.\n\nI can help you with:\n\n💰 Budget Planning & Optimization\n📊 Spending Analysis & Insights\n💡 Personalized Savings Strategies\n📈 Investment Recommendations\n🎯 Financial Goal Setting\n🔍 Expense Review & Cost Cutting\n\nWhat would you like to explore today?`,
+      content: t('aiChat.welcome'),
       timestamp: new Date(),
     };
     setMessages([welcomeMsg]);
@@ -110,25 +107,18 @@ export function AIChat() {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       // Try local AI knowledge base first
-      const localResponse = getAIResponse(text, context);
-      
-      if (localResponse) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: localResponse,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: `📊 Based on your financial data:\n\n💰 Total Income: ₹${context?.income?.toLocaleString() || 0}\n💸 Total Expense: ₹${context?.expense?.toLocaleString() || 0}\n💵 Net Balance: ₹${((context?.income || 0) - (context?.expense || 0)).toLocaleString()}\n\n💡 Quick Tips:\n• Aim to save at least 20% of your income\n• Track all expenses to identify spending patterns\n• Create an emergency fund covering 3-6 months expenses\n• Review and optimize your budget monthly\n\n⚠️ Note: AI service is offline. Try asking specific questions like:\n• How much should I save?\n• How do I create a budget?\n• How can I reduce expenses?`,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorMessage]);
-      }
+      // Fallback to local multilingual AI knowledge base
+      const localResponse = getAIResponse(text, context, language);
+      const content = localResponse ||
+        `📊 ${t('aiChat.offlineResponse')}\n\n💰 ₹${context?.income?.toLocaleString() || 0}\n💸 ₹${context?.expense?.toLocaleString() || 0}\n💵 ₹${((context?.income || 0) - (context?.expense || 0)).toLocaleString()}`;
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
     } finally {
       setLoading(false);
     }
@@ -139,15 +129,15 @@ export function AIChat() {
   }
 
   function clearChat() {
-    if (confirm('Clear all messages?')) {
+    if (confirm(t('aiChat.clearConfirm'))) {
       initChat();
     }
   }
 
-  const selectedLang = LANGUAGES.find(l => l.code === language) || LANGUAGES[0];
+  const selectedLang = SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[0];
 
   return (
-    <DashboardLayout title="AI Financial Advisor">
+    <DashboardLayout title={t('aiChat.subtitle')}>
       <div className="h-[calc(100vh-12rem)] flex flex-col">
         {/* Premium Header */}
         <div className="relative bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 rounded-2xl shadow-2xl p-8 mb-6 overflow-hidden">
@@ -158,10 +148,10 @@ export function AIChat() {
                 <Sparkles className="text-white" size={32} />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white mb-1">AI Financial Advisor</h1>
+                <h1 className="text-3xl font-bold text-white mb-1">{t('aiChat.subtitle')}</h1>
                 <p className="text-emerald-100 text-sm flex items-center gap-2">
                   <Zap size={14} />
-                  Powered by Advanced AI • {messages.length - 1} conversations
+                  {t('aiChat.poweredBy')} • {messages.length - 1} {t('aiChat.conversations')}
                 </p>
               </div>
             </div>
@@ -169,14 +159,17 @@ export function AIChat() {
               <div className="relative">
                 <button onClick={() => setShowLangMenu(!showLangMenu)} className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-xl transition-all border border-white/30 shadow-lg">
                   <Languages size={18} />
-                  <span className="font-medium">{selectedLang.flag} {selectedLang.name}</span>
+                  <span className="font-medium">{selectedLang.flag} {selectedLang.nativeName}</span>
                 </button>
                 {showLangMenu && (
                   <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-50">
-                    {LANGUAGES.map((lang) => (
-                      <button key={lang.code} onClick={() => { setLanguage(lang.code); setShowLangMenu(false); }} className="w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-3 transition-colors">
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <button key={lang.code} onClick={() => { setLanguage(lang.code); setShowLangMenu(false); }} className={`w-full text-left px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex items-center gap-3 transition-colors ${language === lang.code ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
                         <span className="text-2xl">{lang.flag}</span>
-                        <span className="text-gray-900 dark:text-white font-medium">{lang.name}</span>
+                        <div>
+                          <span className="text-gray-900 dark:text-white font-medium block">{lang.nativeName}</span>
+                          <span className="text-gray-500 dark:text-gray-400 text-xs">{lang.name}</span>
+                        </div>
                       </button>
                     ))}
                   </div>
@@ -194,17 +187,17 @@ export function AIChat() {
           <div className="mb-6">
             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
               <Zap size={16} className="text-emerald-600" />
-              Quick Actions - Get instant insights
+              {t('aiChat.quickActions')}
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {QUICK_PROMPTS.map((prompt, i) => {
+              {QUICK_PROMPT_KEYS.map((prompt, i) => {
                 const Icon = prompt.icon;
                 return (
-                  <button key={i} onClick={() => sendMessage(prompt.prompt)} className="group relative flex items-center gap-3 p-5 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 dark:hover:from-emerald-900/20 dark:hover:to-green-900/20 border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-xl transition-all hover:shadow-xl hover:scale-105 text-left">
+                  <button key={i} onClick={() => sendMessage(t(prompt.promptKey))} className="group relative flex items-center gap-3 p-5 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-green-50 dark:hover:from-emerald-900/20 dark:hover:to-green-900/20 border-2 border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-xl transition-all hover:shadow-xl hover:scale-105 text-left">
                     <div className={`p-3 rounded-lg bg-${prompt.color}-100 dark:bg-${prompt.color}-900/20 group-hover:scale-110 transition-transform`}>
                       <Icon size={20} className={`text-${prompt.color}-600 dark:text-${prompt.color}-400`} />
                     </div>
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{prompt.text}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{t(prompt.textKey)}</span>
                   </button>
                 );
               })}
@@ -247,7 +240,7 @@ export function AIChat() {
                       <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                       <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">AI is analyzing...</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">{t('aiChat.analyzing')}</span>
                   </div>
                 </div>
               </div>
@@ -258,13 +251,13 @@ export function AIChat() {
           {/* Input Area */}
           <div className="border-t-2 border-gray-200 dark:border-gray-700 p-5 bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
             <form onSubmit={handleSubmit} className="flex gap-3">
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} placeholder="Ask me anything about your finances..." className="flex-1 px-6 py-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50 placeholder:text-gray-400 shadow-sm" />
+              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} disabled={loading} placeholder={t('aiChat.placeholder')} className="flex-1 px-6 py-4 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all disabled:opacity-50 placeholder:text-gray-400 shadow-sm" />
               <button type="submit" disabled={loading || !input.trim()} className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl hover:scale-105">
                 <Send size={20} />
-                Send
+                {t('aiChat.send')}
               </button>
             </form>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">💡 AI can make mistakes. Verify important financial information.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">{t('aiChat.disclaimer')}</p>
           </div>
         </div>
       </div>

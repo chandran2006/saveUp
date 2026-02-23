@@ -82,7 +82,80 @@ export const aiKnowledgeBase = [
   }
 ];
 
-export function getAIResponse(question: string, context: any): string {
+// Multilingual keyword → knowledge base index mapping
+// Each entry maps language-specific terms to the index in aiKnowledgeBase
+const LANG_KEYWORD_MAP: Record<string, Array<[number, string[]]>> = {
+  hi: [
+    [0,  ['बचत कितनी', 'कितना बचाऊं', 'बचाना चाहिए', 'save each month', 'how much save']],
+    [1,  ['बजट कैसे', 'बजट बनाएं', 'budget kaise', 'budget plan', 'बजट योजना']],
+    [2,  ['आपातकालीन', 'इमरजेंसी फंड', 'emergency fund']],
+    [3,  ['खर्च कम', 'खर्च कैसे घटाएं', 'reduce expenses', 'खर्च घटाना']],
+    [4,  ['ज्यादा खर्च', 'overspend', 'अधिक खर्च']],
+    [5,  ['निवेश कहां', 'पैसा कहां लगाएं', 'invest', 'निवेश करें']],
+    [6,  ['sip', 'म्यूचुअल फंड', 'systematic investment']],
+    [7,  ['कर्ज चुकाएं', 'ऋण कैसे', 'debt kaise', 'loan repay']],
+    [8,  ['बड़ी खरीद', 'लक्ष्य बचत', 'goal saving', 'big purchase']],
+    [9,  ['टैक्स बचाएं', 'tax bachao', 'save tax', 'कर बचत']],
+    [10, ['वित्तीय स्वास्थ्य', 'financial health', 'am i healthy']],
+    [11, ['आय बढ़ाएं', 'income kaise badhaye', 'increase income']],
+    [12, ['क्रेडिट स्कोर', 'credit score', 'cibil']],
+    [13, ['बीमा', 'insurance', 'जीवन बीमा']],
+    [14, ['सेवानिवृत्ति', 'retirement', 'retire']],
+  ],
+  ta: [
+    [0,  ['எவ்வளவு சேமிக்க', 'சேமிப்பு எவ்வளவு', 'how much save']],
+    [1,  ['பட்ஜெட் எப்படி', 'வரவு செலவு திட்டம்', 'budget plan']],
+    [2,  ['அவசர நிதி', 'emergency fund']],
+    [3,  ['செலவு குறைக்க', 'reduce expenses', 'செலவை கட்டுப்படுத்த']],
+    [4,  ['அதிக செலவு', 'overspend']],
+    [5,  ['முதலீடு எங்கே', 'invest where', 'முதலீடு செய்']],
+    [6,  ['sip', 'மியூச்சுவல் ஃபண்ட்']],
+    [7,  ['கடன் திருப்பி', 'debt repay', 'கடன் எப்படி']],
+    [8,  ['பெரிய கொள்முதல்', 'goal saving']],
+    [9,  ['வரி மிச்சம்', 'tax save', 'வரி சேமி']],
+    [10, ['நிதி ஆரோக்கியம்', 'financial health']],
+    [11, ['வருமானம் அதிகரிக்க', 'increase income']],
+    [12, ['கடன் மதிப்பெண்', 'credit score']],
+    [13, ['காப்பீடு', 'insurance']],
+    [14, ['ஓய்வு திட்டம்', 'retirement']],
+  ],
+  es: [
+    [0,  ['cuánto ahorrar', 'how much save', 'ahorro mensual']],
+    [1,  ['cómo crear presupuesto', 'crear un presupuesto', 'budget plan']],
+    [2,  ['fondo de emergencia', 'emergency fund']],
+    [3,  ['reducir gastos', 'reduce expenses', 'gastar menos']],
+    [4,  ['gastar demasiado', 'overspend', 'por qué gasto']],
+    [5,  ['dónde invertir', 'invest', 'inversión']],
+    [6,  ['sip', 'fondo mutuo', 'systematic investment']],
+    [7,  ['pagar deuda', 'debt repay', 'eliminar deuda']],
+    [8,  ['ahorrar para compra', 'goal saving', 'meta de ahorro']],
+    [9,  ['ahorrar impuestos', 'save tax', 'deducción fiscal']],
+    [10, ['salud financiera', 'financial health']],
+    [11, ['aumentar ingresos', 'increase income', 'ganar más']],
+    [12, ['puntaje de crédito', 'credit score', 'historial crediticio']],
+    [13, ['seguro', 'insurance', 'cobertura']],
+    [14, ['jubilación', 'retirement', 'retiro']],
+  ],
+  fr: [
+    [0,  ['combien épargner', 'how much save', 'épargne mensuelle']],
+    [1,  ['créer un budget', 'budget plan', 'comment budgéter']],
+    [2,  ['fonds d\'urgence', 'emergency fund']],
+    [3,  ['réduire dépenses', 'reduce expenses', 'dépenser moins']],
+    [4,  ['trop dépenser', 'overspend', 'pourquoi je dépense']],
+    [5,  ['où investir', 'invest', 'investissement']],
+    [6,  ['sip', 'fonds commun de placement', 'placement régulier']],
+    [7,  ['rembourser dette', 'debt repay', 'payer dette']],
+    [8,  ['économiser pour achat', 'goal saving', 'objectif épargne']],
+    [9,  ['économiser impôts', 'save tax', 'déduction fiscale']],
+    [10, ['santé financière', 'financial health']],
+    [11, ['augmenter revenus', 'increase income', 'gagner plus']],
+    [12, ['score de crédit', 'credit score', 'cote de crédit']],
+    [13, ['assurance', 'insurance', 'couverture']],
+    [14, ['retraite', 'retirement', 'plan retraite']],
+  ],
+};
+
+export function getAIResponse(question: string, context: any, language = 'en'): string {
   const income = context?.income || 0;
   const expense = context?.expense || 0;
   const savings = Math.round(income * 0.2);
@@ -91,23 +164,38 @@ export function getAIResponse(question: string, context: any): string {
   const sip = Math.round(savings * 0.5);
   const savingsRate = income > 0 ? ((income - expense) / income * 100).toFixed(1) : 0;
   const healthStatus = Number(savingsRate) >= 20 ? 'Good' : Number(savingsRate) >= 10 ? 'Fair' : 'Needs Improvement';
-  
+
   const categories = context?.transactions?.reduce((acc: any, t: any) => {
     if (t.type === 'expense') {
       acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
     }
     return acc;
   }, {}) || {};
-  
+
   const topCategory = Object.entries(categories).sort((a: any, b: any) => b[1] - a[1])[0]?.[0] || 'food';
+  const q = question.toLowerCase();
 
-  // Find matching question
-  const match = aiKnowledgeBase.find(item => 
-    question.toLowerCase().includes(item.question.toLowerCase().split(' ').slice(0, 3).join(' '))
-  );
+  // Resolve knowledge base index: multilingual → index, then English fallback
+  let matchIndex = -1;
 
-  if (match) {
-    return match.answer
+  if (language !== 'en' && LANG_KEYWORD_MAP[language]) {
+    for (const [idx, keywords] of LANG_KEYWORD_MAP[language]) {
+      if (keywords.some(kw => q.includes(kw.toLowerCase()))) {
+        matchIndex = idx;
+        break;
+      }
+    }
+  }
+
+  // English keyword fallback (also used as catch-all)
+  if (matchIndex === -1) {
+    matchIndex = aiKnowledgeBase.findIndex(item =>
+      q.includes(item.question.toLowerCase().split(' ').slice(0, 3).join(' '))
+    );
+  }
+
+  if (matchIndex >= 0) {
+    return aiKnowledgeBase[matchIndex].answer
       .replace(/{income}/g, income.toLocaleString())
       .replace(/{expense}/g, expense.toLocaleString())
       .replace(/{savings}/g, savings.toLocaleString())

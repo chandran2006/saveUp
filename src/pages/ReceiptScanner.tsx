@@ -4,7 +4,7 @@ import { supabase } from '../services/supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { LoadingSpinner } from '../components/Loading';
 import { Camera, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
-import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 interface Receipt {
   id: string;
@@ -15,6 +15,7 @@ interface Receipt {
 
 export function ReceiptScanner() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -64,10 +65,10 @@ export function ReceiptScanner() {
       });
 
       loadReceipts();
-      alert('Receipt uploaded! Please add transaction details manually.');
+      alert(t('receiptScanner.uploadSuccess'));
     } catch (error) {
       console.error('Receipt upload error:', error);
-      alert('Failed to upload receipt.');
+      alert(t('receiptScanner.uploadError'));
     } finally {
       setUploading(false);
       setTimeout(() => setUploadPreview(null), 1000);
@@ -75,13 +76,13 @@ export function ReceiptScanner() {
   }
 
   async function deleteReceipt(id: string) {
-    if (!confirm('Delete this receipt?')) return;
+    if (!confirm(t('receiptScanner.deleteConfirm'))) return;
     await supabase.from('receipts').delete().eq('id', id);
     loadReceipts();
   }
 
   return (
-    <DashboardLayout title="Receipt Scanner">
+    <DashboardLayout title={t('receiptScanner.title')}>
       <div className="space-y-6">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-8">
           <div className="text-center">
@@ -93,7 +94,7 @@ export function ReceiptScanner() {
                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-lg">
                       <div className="text-center text-white">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-2"></div>
-                        <p className="font-semibold">Uploading...</p>
+                        <p className="font-semibold">{t('receiptScanner.uploading')}</p>
                       </div>
                     </div>
                   )}
@@ -104,21 +105,21 @@ export function ReceiptScanner() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-50 dark:bg-emerald-900/20 rounded-full mb-4">
                   <Camera className="text-emerald-600" size={32} />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Scan Your Receipts</h2>
-                <p className="text-gray-600 dark:text-gray-400 mb-6">Upload receipt images to keep track of your expenses</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{t('receiptScanner.scanTitle')}</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">{t('receiptScanner.scanSubtitle')}</p>
               </>
             )}
             
             <label className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer transition-colors">
               <Upload size={20} />
-              {uploading ? 'Uploading...' : 'Upload Receipt'}
+              {uploading ? t('receiptScanner.uploading') : t('receiptScanner.uploadReceipt')}
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])} disabled={uploading} />
             </label>
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Receipt History</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">{t('receiptScanner.receiptHistory')}</h3>
           
           {loading ? (
             <div className="flex justify-center py-8">
@@ -127,8 +128,8 @@ export function ReceiptScanner() {
           ) : receipts.length === 0 ? (
             <div className="text-center py-12">
               <ImageIcon size={48} className="mx-auto text-gray-400 mb-4" />
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Receipts Yet</h4>
-              <p className="text-gray-600 dark:text-gray-400">Upload your first receipt to get started</p>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('receiptScanner.noReceipts')}</h4>
+              <p className="text-gray-600 dark:text-gray-400">{t('receiptScanner.noReceiptsSubtitle')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -162,12 +163,12 @@ export function ReceiptScanner() {
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How it works</h4>
+          <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">{t('receiptScanner.howItWorks')}</h4>
           <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-decimal list-inside">
-            <li>Upload a clear photo of your receipt</li>
-            <li>Receipt is saved to your account</li>
-            <li>View all receipts in one place</li>
-            <li>Add transaction details manually from receipts</li>
+            <li>{t('receiptScanner.step1')}</li>
+            <li>{t('receiptScanner.step2')}</li>
+            <li>{t('receiptScanner.step3')}</li>
+            <li>{t('receiptScanner.step4')}</li>
           </ol>
         </div>
       </div>
