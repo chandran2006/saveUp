@@ -17,7 +17,7 @@ export function DailyLimitAlert() {
     const { data: limitData } = await supabase.from('daily_limits').select('*').eq('user_id', user?.id).eq('active', true).maybeSingle();
     
     const today = new Date().toISOString().split('T')[0];
-    const { data: transactions } = await supabase.from('transactions').select('*').eq('user_id', user?.id).eq('date', today).eq('type', 'expense');
+    const { data: transactions } = await supabase.from('transactions').select('amount').eq('user_id', user?.id).eq('transaction_date', today).eq('type', 'expense');
     
     const todaySpent = transactions?.reduce((s, t) => s + Number(t.amount), 0) || 0;
     
@@ -26,12 +26,21 @@ export function DailyLimitAlert() {
       setSpent(todaySpent);
       if (todaySpent >= Number(limitData.limit_amount) * 0.8) {
         setShowAlert(true);
-        await supabase.from('notifications').insert({
-          user_id: user?.id,
-          type: 'daily_limit',
-          title: 'Daily Limit Alert',
-          message: `You've spent ₹${todaySpent} of your ₹${limitData.limit_amount} daily limit`
-        });
+        const { data: existing } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', user?.id)
+          .eq('type', 'daily_limit')
+          .gte('created_at', today)
+          .maybeSingle();
+        if (!existing) {
+          await supabase.from('notifications').insert({
+            user_id: user?.id,
+            type: 'daily_limit',
+            title: 'Daily Limit Alert',
+            message: `You've spent ₹${todaySpent} of your ₹${limitData.limit_amount} daily limit`
+          });
+        }
       }
     }
   }

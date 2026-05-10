@@ -1,6 +1,8 @@
 import { Bell, User } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { NotificationBell } from './NotificationBell';
 
 interface NavbarProps {
   title: string;
@@ -8,6 +10,7 @@ interface NavbarProps {
 
 export function Navbar({ title }: NavbarProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
@@ -15,10 +18,7 @@ export function Navbar({ title }: NavbarProps) {
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{title}</h2>
       
       <div className="flex items-center gap-4">
-        <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-          <Bell size={20} className="text-gray-600 dark:text-gray-400" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
+        <NotificationBell />
 
         <div className="relative">
           <button
@@ -35,10 +35,10 @@ export function Navbar({ title }: NavbarProps) {
               <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                 <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.email}</p>
               </div>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={() => { navigate('/profile'); setShowDropdown(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                 Profile
               </button>
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button onClick={() => { navigate('/profile'); setShowDropdown(false); }} className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                 Settings
               </button>
             </div>

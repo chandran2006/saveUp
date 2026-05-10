@@ -28,7 +28,7 @@ interface Transaction {
   type: string;
   amount: number;
   category: string;
-  date: string;
+  transaction_date: string;
 }
 
 interface Budget {
@@ -56,7 +56,7 @@ export function Dashboard() {
         .from('transactions')
         .select('*')
         .eq('user_id', user?.id)
-        .order('date', { ascending: false });
+        .order('transaction_date', { ascending: false });
 
       const currentMonth = new Date().toISOString().slice(0, 7);
       const { data: budgetData } = await supabase
@@ -99,7 +99,7 @@ export function Dashboard() {
 
   const monthlyData = transactions.reduce(
     (acc: { [key: string]: { income: number; expense: number } }, t) => {
-      const month = t.date.slice(0, 7);
+      const month = t.transaction_date.slice(0, 7);
       if (!acc[month]) {
         acc[month] = { income: 0, expense: 0 };
       }

@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount numeric NOT NULL CHECK (amount > 0),
   category text NOT NULL,
   description text DEFAULT '',
-  date date NOT NULL,
+  transaction_date date NOT NULL,
   created_at timestamptz DEFAULT now()
 );
 
@@ -142,7 +142,26 @@ CREATE POLICY "Users can delete own budgets"
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS transactions_user_id_idx ON transactions(user_id);
-CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions(date);
+CREATE INDEX IF NOT EXISTS transactions_date_idx ON transactions(transaction_date);
 CREATE INDEX IF NOT EXISTS transactions_category_idx ON transactions(category);
 CREATE INDEX IF NOT EXISTS budgets_user_id_idx ON budgets(user_id);
 CREATE INDEX IF NOT EXISTS budgets_month_idx ON budgets(month);
+
+-- Auto-create user profile on signup to prevent FK violations
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.users (id, email, name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1))
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user();

@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS spending_predictions (
   predicted_amount numeric NOT NULL,
   category text NOT NULL,
   confidence numeric,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, month)
 );
 
 -- Daily limits table

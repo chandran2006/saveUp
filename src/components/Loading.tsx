@@ -18,15 +18,16 @@ export function Loading() {
 
 export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const sizeClasses = {
-    sm: 'w-4 h-4 border-2',
-    md: 'w-8 h-8 border-3',
-    lg: 'w-12 h-12 border-4',
+    sm: { box: 'w-4 h-4', border: 'border-2' },
+    md: { box: 'w-8 h-8', border: 'border-2' },
+    lg: { box: 'w-12 h-12', border: 'border-4' },
   };
+  const { box, border } = sizeClasses[size];
 
   return (
-    <div className={`relative ${sizeClasses[size]}`}>
-      <div className="absolute top-0 left-0 w-full h-full border-blue-200 dark:border-blue-900 rounded-full"></div>
-      <div className={`absolute top-0 left-0 w-full h-full border-blue-600 dark:border-blue-400 rounded-full border-t-transparent animate-spin ${sizeClasses[size]}`}></div>
+    <div className={`relative ${box}`}>
+      <div className={`absolute inset-0 ${border} border-blue-200 dark:border-blue-900 rounded-full`}></div>
+      <div className={`absolute inset-0 ${border} border-blue-600 dark:border-blue-400 rounded-full border-t-transparent animate-spin`}></div>
     </div>
   );
 }

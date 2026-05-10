@@ -47,7 +47,8 @@ export function ReceiptScanner() {
 
     try {
       const fileName = `${user?.id}/${Date.now()}_${file.name}`;
-      const { data: uploadData } = await supabase.storage.from('receipts').upload(fileName, file);
+      const { error: uploadError } = await supabase.storage.from('receipts').upload(fileName, file);
+      if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('receipts').getPublicUrl(fileName);
 
       // Simple extraction without backend

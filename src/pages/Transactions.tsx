@@ -15,7 +15,7 @@ interface Transaction {
   amount: number;
   category: string;
   description: string;
-  date: string;
+  transaction_date: string;
 }
 
 const INCOME_CATEGORIES = ['salary', 'businessIncome', 'freelanceIncome', 'rentalIncome', 'interestIncome', 'investmentIncome', 'bonus', 'commission', 'pension', 'giftReceived', 'refund', 'otherIncome'];
@@ -35,7 +35,7 @@ export function Transactions() {
     amount: '',
     category: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    transaction_date: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
@@ -44,10 +44,15 @@ export function Transactions() {
 
   async function loadTransactions() {
     try {
-      const { data } = await supabase.from('transactions').select('*').eq('user_id', user?.id).order('date', { ascending: false });
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('transaction_date', { ascending: false });
+      if (error) throw error;
       setTransactions(data || []);
-    } catch (error) {
-      console.error('Error loading transactions:', error);
+    } catch (error: any) {
+      console.error('Error loading transactions:', error?.message);
     } finally {
       setLoading(false);
     }
@@ -55,42 +60,46 @@ export function Transactions() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) { alert('Not logged in'); return; }
     try {
       const amountValue = Math.round(parseFloat(formData.amount));
       if (editingTransaction) {
-        await supabase.from('transactions').update({
+        const { error } = await supabase.from('transactions').update({
           type: formData.type,
           amount: amountValue,
           category: formData.category,
           description: formData.description,
-          date: formData.date,
+          transaction_date: formData.transaction_date,
         }).eq('id', editingTransaction.id);
+        if (error) throw error;
       } else {
-        await supabase.from('transactions').insert([{
-          user_id: user?.id,
+        const { error } = await supabase.from('transactions').insert([{
+          user_id: user.id,
           type: formData.type,
           amount: amountValue,
           category: formData.category,
           description: formData.description,
-          date: formData.date,
+          transaction_date: formData.transaction_date,
         }]);
+        if (error) throw error;
       }
       setModalOpen(false);
       setEditingTransaction(null);
       resetForm();
       loadTransactions();
-    } catch (error) {
-      console.error('Error saving transaction:', error);
+    } catch (error: any) {
+      alert(error?.message ?? 'Error saving transaction');
     }
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('deleteConfirm', language))) return;
     try {
-      await supabase.from('transactions').delete().eq('id', id);
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) throw error;
       loadTransactions();
-    } catch (error) {
-      console.error('Error deleting transaction:', error);
+    } catch (error: any) {
+      alert(error?.message ?? 'Error deleting transaction');
     }
   }
 
@@ -101,7 +110,7 @@ export function Transactions() {
       amount: transaction.amount.toString(),
       category: transaction.category,
       description: transaction.description,
-      date: transaction.date,
+      transaction_date: transaction.transaction_date,
     });
     setModalOpen(true);
   }
@@ -112,7 +121,7 @@ export function Transactions() {
       amount: '',
       category: '',
       description: '',
-      date: new Date().toISOString().split('T')[0],
+      transaction_date: new Date().toISOString().split('T')[0],
     });
   }
 
@@ -123,15 +132,20 @@ export function Transactions() {
   }
 
   function exportToCSV() {
+    const sanitize = (val: string | number) => {
+      const str = String(val);
+      const safe = /^[=+\-@]/.test(str) ? `'${str}` : str;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
     const headers = ['Date', 'Type', 'Category', 'Description', 'Amount'];
-    const rows = filteredTransactions.map(t => [
-      t.date,
-      t.type,
-      t.category,
-      t.description || '',
-      t.amount
+    const rows = filteredTransactions.map((tx) => [
+      sanitize(tx.transaction_date),
+      sanitize(tx.type),
+      sanitize(tx.category),
+      sanitize(tx.description || ''),
+      sanitize(tx.amount),
     ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csv = [headers.map(sanitize), ...rows].map((row) => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -143,7 +157,7 @@ export function Transactions() {
 
   const filteredTransactions = transactions.filter((trans) => {
     if (filterCategory && trans.category !== filterCategory) return false;
-    if (filterMonth && !trans.date.startsWith(filterMonth)) return false;
+    if (filterMonth && !trans.transaction_date.startsWith(filterMonth)) return false;
     return true;
   });
 
@@ -218,7 +232,7 @@ export function Transactions() {
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredTransactions.map((transaction) => (
                     <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{new Date(transaction.date).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{new Date(transaction.transaction_date).toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${transaction.type === 'income' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}`}>
                           {t(transaction.type, language)}
@@ -250,7 +264,7 @@ export function Transactions() {
                 if (data.amount) setFormData({ ...formData, amount: data.amount });
                 if (data.category) setFormData({ ...formData, category: data.category });
                 if (data.description) setFormData({ ...formData, description: data.description });
-                if (data.date) setFormData({ ...formData, date: data.date });
+                if (data.date) setFormData({ ...formData, transaction_date: data.date });
               }} />
             </div>
           )}
@@ -281,7 +295,7 @@ export function Transactions() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('date', language)}</label>
-              <input type="date" required value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500" />
+              <input type="date" required value={formData.transaction_date} onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })} className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500" />
             </div>
             <div className="flex gap-3 pt-4">
               <button type="button" onClick={handleClose} className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">{t('cancel', language)}</button>

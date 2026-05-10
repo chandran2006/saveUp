@@ -20,7 +20,7 @@ export function Insights() {
       const { data: transactions } = await supabase.from('transactions').select('*').eq('user_id', user?.id);
       
       const monthlyTrend = transactions?.reduce((acc: any, t) => {
-        const month = t.date.slice(0, 7);
+        const month = t.transaction_date.slice(0, 7);
         if (!acc[month]) acc[month] = { income: 0, expense: 0 };
         acc[month][t.type] += Number(t.amount);
         return acc;

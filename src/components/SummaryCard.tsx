@@ -1,5 +1,3 @@
-import { LucideIcon } from 'lucide-react';
-
 interface SummaryCardProps {
   title: string;
   value: string;

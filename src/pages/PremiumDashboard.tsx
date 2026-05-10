@@ -25,7 +25,7 @@ export function PremiumDashboard() {
     try {
       setLoading(true);
       const [transactionsRes, budgetRes] = await Promise.all([
-        supabase.from('transactions').select('*').eq('user_id', user?.id).order('date', { ascending: false }),
+        supabase.from('transactions').select('*').eq('user_id', user?.id).order('transaction_date', { ascending: false }),
         supabase.from('budgets').select('*').eq('user_id', user?.id).eq('month', new Date().toISOString().slice(0, 7)).maybeSingle()
       ]);
 
@@ -44,7 +44,7 @@ export function PremiumDashboard() {
       const pieData = Object.entries(categoryData).map(([name, value]) => ({ name, value }));
 
       const monthlyData = transactions.reduce((acc: any, t) => {
-        const month = t.date.slice(0, 7);
+        const month = t.transaction_date.slice(0, 7);
         if (!acc[month]) acc[month] = { income: 0, expense: 0 };
         acc[month][t.type] += Number(t.amount);
         return acc;

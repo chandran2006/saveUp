@@ -38,8 +38,8 @@ export function Budget() {
         .select('amount')
         .eq('user_id', user?.id)
         .eq('type', 'expense')
-        .gte('date', startDate)
-        .lt('date', endDate);
+        .gte('transaction_date', startDate)
+        .lt('transaction_date', endDate);
       
       const spending = transactionsData?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
       
@@ -55,7 +55,7 @@ export function Budget() {
           .eq('user_id', user?.id)
           .eq('type', 'budget_exceeded')
           .eq('read', false)
-          .single();
+          .maybeSingle();
         
         if (!existingNotif) {
           await supabase.from('notifications').insert({
@@ -82,17 +82,20 @@ export function Budget() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) { alert('Not logged in'); return; }
     try {
       const amount = Number(budgetAmount);
       if (amount <= 0) return;
       if (budget) {
-        await supabase.from('budgets').update({ amount }).eq('id', budget.id);
+        const { error } = await supabase.from('budgets').update({ amount }).eq('id', budget.id);
+        if (error) throw error;
       } else {
-        await supabase.from('budgets').insert([{ user_id: user?.id, month: currentMonth, amount }]);
+        const { error } = await supabase.from('budgets').insert([{ user_id: user.id, month: currentMonth, amount }]);
+        if (error) throw error;
       }
       loadData();
-    } catch (error) {
-      console.error('Error saving budget:', error);
+    } catch (error: any) {
+      alert(error?.message ?? 'Error saving budget');
     }
   }
 

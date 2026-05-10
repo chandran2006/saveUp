@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
 import { getAIResponse } from '../utils/aiKnowledge';
 import { useTranslation } from 'react-i18next';
-import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'https://localhost:8080/api';
 
 interface Message {
   id: string;
@@ -90,17 +91,19 @@ export function AIChat() {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8080/api/ai/chat', {
-        message: text,
-        context: context,
-        userId: user?.id,
-        language: language
+      const res = await fetch(`${API_URL}/ai/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, context, userId: user?.id, language }),
       });
+
+      if (!res.ok) throw new Error('Server error');
+      const data = await res.json();
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.data.response || response.data.message || 'No response',
+        content: data.response || data.message || 'No response',
         timestamp: new Date(),
       };
 

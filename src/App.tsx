@@ -15,7 +15,8 @@ import { AIChat } from './pages/AIChat';
 import { Profile } from './pages/Profile';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return null;
   return user ? <>{children}</> : <Navigate to="/login" />;
 }
 
